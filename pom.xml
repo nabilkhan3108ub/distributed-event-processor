@@ -1,0 +1,214 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!--
+        WHAT IS pom.xml?
+        This is Maven's configuration file. Maven is a build tool for Java (like npm for JavaScript).
+        It does 3 things:
+        1. Downloads libraries (dependencies) your project needs
+        2. Compiles your Java code
+        3. Packages it into a runnable JAR file
+
+        Think of it as a recipe that says "my project needs Kafka library version X,
+        Cassandra library version Y, etc." Maven downloads them all automatically.
+    -->
+
+    <parent>
+        <!--
+            Spring Boot Starter Parent: gives us default configurations
+            so we don't have to specify versions for every single library.
+            Spring Boot 3.2 requires Java 17+.
+        -->
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.2.1</version>
+        <relativePath/>
+    </parent>
+
+    <!-- Our project's identity -->
+    <groupId>com.eventflow</groupId>
+    <artifactId>eventflow</artifactId>
+    <version>1.0.0</version>
+    <name>EventFlow</name>
+    <description>Distributed Event Processing Engine</description>
+
+    <properties>
+        <java.version>17</java.version>
+    </properties>
+
+    <dependencies>
+
+        <!-- ==================== CORE WEB ==================== -->
+
+        <!--
+            Spring Boot Web Starter:
+            Gives us everything to build REST APIs:
+            - Embedded Tomcat server (runs on port 8080)
+            - @RestController, @GetMapping, @PostMapping annotations
+            - JSON serialization/deserialization (Jackson)
+            - Request validation
+        -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+
+        <!--
+            Spring Boot Validation:
+            Lets us use annotations like @NotNull, @NotBlank, @Size
+            on our request DTOs to automatically validate incoming JSON.
+            If validation fails, Spring returns 400 Bad Request.
+        -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+
+        <!-- ==================== KAFKA ==================== -->
+
+        <!--
+            Spring Kafka:
+            Provides KafkaTemplate (for producing/sending messages)
+            and @KafkaListener (for consuming/receiving messages).
+            Handles all the low-level Kafka protocol details.
+        -->
+        <dependency>
+            <groupId>org.springframework.kafka</groupId>
+            <artifactId>spring-kafka</artifactId>
+        </dependency>
+
+        <!-- ==================== CASSANDRA ==================== -->
+
+        <!--
+            DataStax Cassandra Driver:
+            The official Java driver to talk to Cassandra.
+            Handles connection pooling, load balancing across nodes,
+            retry policies, and prepared statements.
+        -->
+        <dependency>
+            <groupId>com.datastax.oss</groupId>
+            <artifactId>java-driver-core</artifactId>
+            <version>4.17.0</version>
+        </dependency>
+
+        <!-- ==================== MONITORING ==================== -->
+
+        <!--
+            Spring Boot Actuator:
+            Adds production-ready features like /health endpoint,
+            /metrics endpoint, and integrates with Prometheus.
+        -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+
+        <!--
+            Micrometer Prometheus:
+            Bridges Spring Boot metrics to Prometheus format.
+            When Prometheus hits /actuator/prometheus, this library
+            converts all our custom counters/gauges/histograms
+            into the text format Prometheus understands.
+        -->
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-registry-prometheus</artifactId>
+        </dependency>
+
+        <!-- ==================== UTILITIES ==================== -->
+
+        <!--
+            Jackson (already included via spring-boot-starter-web, but
+            we add the datatype module for Java 8 time types like Instant)
+        -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.datatype</groupId>
+            <artifactId>jackson-datatype-jsr310</artifactId>
+        </dependency>
+
+        <!--
+            Lombok: reduces boilerplate code.
+            Instead of writing getters, setters, constructors manually,
+            you just add @Data, @Builder, @AllArgsConstructor annotations.
+            The annotation processor generates the code at compile time.
+        -->
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- ==================== TESTING ==================== -->
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.kafka</groupId>
+            <artifactId>spring-kafka-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!--
+            Testcontainers: spins up REAL Docker containers of Kafka
+            and Cassandra during tests. This means our integration tests
+            run against actual infrastructure, not mocks.
+            This is what companies like Netflix and Spotify use.
+        -->
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers</artifactId>
+            <version>1.19.3</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>kafka</artifactId>
+            <version>1.19.3</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>cassandra</artifactId>
+            <version>1.19.3</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>1.19.3</version>
+            <scope>test</scope>
+        </dependency>
+
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!--
+                Spring Boot Maven Plugin:
+                Packages our app into a "fat JAR" — a single .jar file
+                that contains ALL dependencies and an embedded Tomcat server.
+                You run it with: java -jar eventflow-1.0.0.jar
+            -->
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <excludes>
+                        <exclude>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                        </exclude>
+                    </excludes>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>
