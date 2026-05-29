@@ -1,0 +1,108 @@
+# ==========================================
+# EventFlow Application Configuration
+# ==========================================
+#
+# WHAT IS application.yml?
+# This is Spring Boot's configuration file. Instead of hardcoding
+# values like database addresses and port numbers in Java code,
+# we put them here. This means:
+# 1. You can change configuration WITHOUT recompiling code
+# 2. Different environments (dev, staging, prod) use different configs
+# 3. Sensitive values (passwords) can be overridden via environment variables
+#
+# HOW ENVIRONMENT VARIABLES WORK:
+# Any value here can be overridden using the syntax ${ENV_VAR:default}
+# Example: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+# - If KAFKA_BOOTSTRAP_SERVERS is set in the environment, use that
+# - Otherwise, fall back to "localhost:9092"
+#
+# In Docker Compose, we set these environment variables per container.
+# In production (Kubernetes), they come from ConfigMaps or Secrets.
+
+# ==================== SERVER CONFIG ====================
+server:
+  port: 8080                    # HTTP port the app listens on
+
+# ==================== KAFKA CONFIG ====================
+spring:
+  kafka:
+    # Where to find the Kafka brokers
+    # In Docker Compose: kafka-1:29092,kafka-2:29092,kafka-3:29092
+    # Locally: localhost:9092
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+
+    producer:
+      # How to convert Java objects to bytes for Kafka
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+
+    consumer:
+      # How to convert bytes back to Java objects
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      # Consumer group — all instances share this name
+      group-id: eventflow-processors
+      # Don't auto-commit offsets — we do it manually after processing
+      enable-auto-commit: false
+      # Start from the beginning if no offset exists
+      auto-offset-reset: earliest
+      properties:
+        # Trust our model package for deserialization
+        spring.json.trusted.packages: com.eventflow.model
+
+  # ==================== JACKSON (JSON) CONFIG ====================
+  jackson:
+    # Don't include null fields in JSON responses
+    # {"id": "abc", "processedAt": null} becomes {"id": "abc"}
+    default-property-inclusion: non_null
+    # Format timestamps as ISO-8601 strings, not epoch numbers
+    serialization:
+      write-dates-as-timestamps: false
+
+# ==================== CASSANDRA CONFIG ====================
+# These are custom properties (not built-in Spring properties)
+# We read them in CassandraConfig.java using @Value
+cassandra:
+  contact-points: ${CASSANDRA_CONTACT_POINTS:localhost}
+  port: ${CASSANDRA_PORT:9042}
+  datacenter: ${CASSANDRA_DATACENTER:datacenter1}
+  keyspace: ${CASSANDRA_KEYSPACE:eventflow}
+
+# ==================== MONITORING CONFIG ====================
+management:
+  endpoints:
+    web:
+      exposure:
+        # Expose these actuator endpoints via HTTP
+        # health: /actuator/health — basic health check
+        # prometheus: /actuator/prometheus — metrics in Prometheus format
+        # info: /actuator/info — application info
+        # metrics: /actuator/metrics — Spring metrics
+        include: health,prometheus,info,metrics
+
+  # Make the Prometheus endpoint available WITHOUT authentication
+  # Prometheus needs to scrape this endpoint every 15 seconds
+  endpoint:
+    health:
+      show-details: always   # Show component-level health details
+    prometheus:
+      enabled: true
+
+  # Prometheus metrics configuration
+  metrics:
+    tags:
+      # Add "application" tag to ALL metrics
+      # This helps when you have multiple apps sending to the same Prometheus
+      application: eventflow
+
+# ==================== LOGGING CONFIG ====================
+logging:
+  level:
+    # Set log levels per package
+    com.eventflow: INFO              # Our code: INFO level
+    org.apache.kafka: WARN           # Kafka: suppress verbose logs
+    com.datastax: WARN               # Cassandra driver: suppress verbose logs
+    org.springframework.kafka: WARN  # Spring Kafka: suppress verbose logs
+  pattern:
+    # Log format: timestamp [thread] LEVEL class - message
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
