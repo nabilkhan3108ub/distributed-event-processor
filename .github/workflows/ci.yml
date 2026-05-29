@@ -1,0 +1,102 @@
+# ==========================================
+# EventFlow CI/CD Pipeline
+# ==========================================
+#
+# WHAT IS CI/CD?
+# CI = Continuous Integration: automatically test code when pushed
+# CD = Continuous Delivery: automatically build and prepare for deployment
+#
+# HOW GITHUB ACTIONS WORKS:
+# 1. You push code to GitHub
+# 2. GitHub sees this file and runs the steps defined here
+# 3. A fresh virtual machine (runner) is created
+# 4. Your code is checked out, built, and tested
+# 5. If all steps pass, the build is "green" ✅
+# 6. If any step fails, the build is "red" ❌
+#
+# WORKFLOW TRIGGERS:
+# This pipeline runs when:
+#   - Code is pushed to the "main" branch
+#   - A pull request targets the "main" branch
+#
+# WHAT THIS PIPELINE DOES:
+# 1. Checks out the code
+# 2. Sets up Java 17
+# 3. Caches Maven dependencies (faster subsequent builds)
+# 4. Runs unit tests
+# 5. Runs integration tests (using Testcontainers with real Kafka + Cassandra)
+# 6. Builds the Docker image
+# 7. Reports test results
+
+name: EventFlow CI/CD
+
+# When to run this pipeline
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  # ==================== BUILD AND TEST ====================
+  build:
+    # Run on Ubuntu (Linux) virtual machine
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Download the code from the repository
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Step 2: Install Java 17
+      # We use Temurin (Eclipse's free JDK distribution)
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      # Step 3: Cache Maven dependencies
+      # Maven downloads ~200MB of libraries on first build.
+      # Caching saves them so subsequent builds skip the download.
+      # The cache key includes the pom.xml hash — if dependencies
+      # change, the cache is invalidated and rebuilt.
+      - name: Cache Maven packages
+        uses: actions/cache@v3
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      # Step 4: Run unit tests
+      # These are fast tests that don't need external services.
+      # They use mocks instead of real Kafka/Cassandra.
+      - name: Run unit tests
+        run: mvn test -B
+
+      # Step 5: Run integration tests
+      # These use Testcontainers to spin up real Kafka and Cassandra
+      # in Docker. The GitHub Actions runner has Docker installed.
+      #
+      # -Pintegration-tests activates the "integration-tests" Maven profile
+      # (defined in pom.xml, you'd add this for real CI setups)
+      - name: Run integration tests
+        run: mvn verify -B
+
+      # Step 6: Build the JAR (without running tests again)
+      - name: Build package
+        run: mvn package -DskipTests -B
+
+      # Step 7: Build Docker image (verify it builds successfully)
+      - name: Build Docker image
+        run: docker build -t eventflow:${{ github.sha }} .
+
+      # Step 8: Upload test results as artifacts
+      # If tests fail, you can download the reports from GitHub
+      - name: Upload test results
+        if: always()  # Run even if previous steps failed
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: target/surefire-reports/
