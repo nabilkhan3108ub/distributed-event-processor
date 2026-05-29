@@ -1,0 +1,55 @@
+# ==========================================
+# Prometheus Configuration
+# ==========================================
+#
+# HOW PROMETHEUS WORKS:
+# Prometheus is a PULL-based monitoring system. Every X seconds,
+# it hits the /actuator/prometheus endpoint on our app and
+# "scrapes" (downloads) the current metric values.
+#
+# It then stores these as time-series data:
+#   eventflow_events_ingested_total{application="eventflow"} 1523 @1685000000
+#   eventflow_events_ingested_total{application="eventflow"} 1547 @1685000015
+#   eventflow_events_ingested_total{application="eventflow"} 1589 @1685000030
+#
+# Each line is: metric_name{labels} value @timestamp
+#
+# You can then query this data with PromQL:
+#   rate(eventflow_events_ingested_total[1m])
+#   → events per second over the last minute
+
+global:
+  # How often Prometheus scrapes ALL targets
+  # 15 seconds is the default and recommended interval.
+  # Too fast (1s) = excessive load on targets.
+  # Too slow (60s) = miss short-lived spikes.
+  scrape_interval: 15s
+
+  # How often Prometheus evaluates alerting rules
+  evaluation_interval: 15s
+
+scrape_configs:
+  # ==================== EVENTFLOW APP ====================
+  # Scrape our application's metrics endpoint
+  - job_name: 'eventflow'
+    # Override the global interval for this target if needed
+    scrape_interval: 10s
+
+    # Where to find the metrics endpoint
+    # Our Spring Boot app exposes Prometheus metrics at /actuator/prometheus
+    metrics_path: '/actuator/prometheus'
+
+    static_configs:
+      # The hostname "eventflow-app" works because both Prometheus
+      # and our app are on the same Docker network
+      - targets: ['eventflow-app:8080']
+        labels:
+          # Extra labels added to all metrics from this target
+          # Useful when you have multiple environments (dev, staging, prod)
+          environment: 'development'
+
+  # ==================== PROMETHEUS SELF-MONITORING ====================
+  # Prometheus monitors itself — meta, but useful
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']

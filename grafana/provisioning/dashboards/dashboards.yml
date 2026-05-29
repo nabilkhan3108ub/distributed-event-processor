@@ -1,0 +1,17 @@
+# Grafana Dashboard Provisioning
+# Tells Grafana to load dashboard JSON files from a directory.
+# When Grafana starts, it reads dashboards from /var/lib/grafana/dashboards
+# and creates them automatically.
+
+apiVersion: 1
+
+providers:
+  - name: 'EventFlow Dashboards'
+    orgId: 1
+    folder: 'EventFlow'
+    type: file
+    disableDeletion: false
+    editable: true
+    options:
+      path: /var/lib/grafana/dashboards
+      foldersFromFilesStructure: false
