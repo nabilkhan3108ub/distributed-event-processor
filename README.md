@@ -47,14 +47,14 @@ A production-grade distributed event processing engine built with **Java 17**, *
 
 | Component       | Technology                          | Purpose                              |
 |----------------|-------------------------------------|--------------------------------------|
-| Language        | Java 17                             | Core application logic               |
+| Language        | Java                                | Core application logic               |
 | Framework       | Spring Boot 3.2                     | REST API, dependency injection       |
 | Message Broker  | Apache Kafka 3.6                    | Event streaming, decoupling          |
 | Database        | Apache Cassandra 4.1                | Distributed time-series storage      |
 | Monitoring      | Prometheus + Grafana                | Metrics collection and dashboards    |
 | Containerization| Docker + Docker Compose             | Local development and deployment     |
 | CI/CD           | GitHub Actions                      | Automated testing and builds         |
-| Testing         | JUnit 5 + Testcontainers           | Unit + integration tests             |
+| Testing         | JUnit 5 + Testcontainers            | Unit + integration tests             |
 
 ## Key Design Decisions
 
